@@ -126,14 +126,56 @@ table <- gtable_add_grob(table,
 grid.arrange(table, newpage = TRUE)
 
 
+################################
+## Spatial Segregation of Income
+################################
 
-# Spatial Segregation of Income (A3)
-### Global or Local Moran's I
+##Global Moran's I
+income.nb <- poly2nb(income.tracts)
+income.net <- nb2lines(income.nb, coords=coordinates(income.tracts))
+crs(income.net) <- crs(income.tracts)
+
+tm_shape(income.tracts) + tm_borders(col='lightgrey') + 
+  tm_shape(income.net) + tm_lines(col='red')
+
+income.lw <- nb2listw(income.nb, zero.policy = TRUE, style = "W")
+print.listw(income.lw, zero.policy = TRUE)
+
+income.mi <- moran.test(income.tracts$Income, income.lw, zero.policy = TRUE)
+income.mi
+
+mI <- income.mi$estimate[[1]]
+eI <- income.mi$estimate[[2]]
+var <- income.mi$estimate[[3]]
+
+z <- (mI - eI) / sqrt(var)
 
 
+##Local Moran's I (LISA)
+lisa.test <- localmoran(income.tracts$Income, income.lw, zero.policy = TRUE)
+lisa.test
 
-# Spatial Interpolation (A4)
-### Ordinary Kriging
+income.tracts$Ii <- lisa.test[,1]
+income.tracts$E.Ii<- lisa.test[,2]
+income.tracts$Var.Ii<- lisa.test[,3]
+income.tracts$Z.Ii<- lisa.test[,4]
+income.tracts$P<- lisa.test[,5]
+
+map_LISA <- tm_shape(income.tracts) + 
+  tm_polygons(col = "Z.Ii", 
+              title = "Local Moran's I for Income (Z Value)", 
+              style = "jenks", 
+              palette = "viridis", n = 6) 
+
+
+map_LISA
+
+
+#############################
+## Spatial Interpolation (A4)
+#############################
+
+#Ordinary Kriging
 
 
 
