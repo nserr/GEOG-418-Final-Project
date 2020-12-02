@@ -51,24 +51,25 @@ map_Income <- tm_shape(income.tracts) +
 
 map_Income
 
-#Merge PM2.5 and dissemination data
-pm25.tracts <- merge(census.tracts, pm2.5, by = "DAUID")
-#Remove NA values
-pm25.tracts <- pm25.tracts[!is.na(pm25.tracts$PM25),]
-#Reproject the data
-pm25.tracts <- spTransform(pm25.tracts, CRS("+init=epsg:26910"))
+#Load and observe PM25 data
+mean.pm25 = aggregate(PM25 ~ DAUID, pm2.5, mean)
+mrg.tab.mean <- sp::merge(income.tracts, mean.pm25, by = "DAUID", all.x = FALSE)
+pm25.mean.spdf = na.omit(mrg.tab.mean)
 
+tm_shape(income.tracts) + 
+  tm_polygons() +
+  tm_shape(pm25.mean.spdf) +
+  tm_dots(col="PM25", palette = "-RdBu", 
+          title="Sampled PM2.5", size=0.2) + 
+  tm_legend(legend.outside=TRUE)
 
-#Create a grid called grd to use in your interpolation
-# Create an empty grid where n is the total number of cells
-grd <- as.data.frame(spsample(pm2.5, "regular", n=5000))
+#Set up empty grid for use in interpolation
+grd <- as.data.frame(spsample(pm2.5, "regular", n=50000))
 names(grd)       <- c("X", "Y")
 coordinates(grd) <- c("X", "Y")
-# Create SpatialPixel object:
+
 gridded(grd)     <- TRUE  
-# Create SpatialGrid object:
 fullgrid(grd)    <- TRUE  
-#Reproject the grid:
 proj4string(grd) <- proj4string(income.tracts)
 
 
@@ -87,14 +88,14 @@ CovIncome <- (sdIncome / meanIncome) * 100
 normIncome_PVAL <- shapiro.test(income.tracts$Income)$p.value
 
 #PM2.5
-meanPM25 <- mean(pm25.tracts$PM25)
-sdPM25 <- sd(pm25.tracts$PM25)
-modePM25 <- as.numeric(names(sort(table(pm25.tracts$PM25), decreasing = TRUE))[1])
-medianPM25 <- median(pm25.tracts$PM25)
-skewPM25 <- skewness(pm25.tracts$PM25)[1]
-kurtPM25 <- kurtosis(pm25.tracts$PM25)[1]
+meanPM25 <- mean(pm25.mean.spdf$PM25)
+sdPM25 <- sd(pm25.mean.spdf$PM25)
+modePM25 <- as.numeric(names(sort(table(pm25.mean.spdf$PM25), decreasing = TRUE))[1])
+medianPM25 <- median(pm25.mean.spdf$PM25)
+skewPM25 <- skewness(pm25.mean.spdf$PM25)[1]
+kurtPM25 <- kurtosis(pm25.mean.spdf$PM25)[1]
 CovPM25 <- (sdPM25 / meanPM25) * 100
-normPM25_PVAL <- shapiro.test(pm25.tracts$PM25)$p.value
+normPM25_PVAL <- shapiro.test(pm25.mean.spdf$PM25)$p.value
 
 #Set table data
 samples = c("Income", "PM 2.5")
@@ -131,6 +132,7 @@ grid.arrange(table, newpage = TRUE)
 ################################
 
 ##Global Moran's I
+
 income.nb <- poly2nb(income.tracts)
 income.net <- nb2lines(income.nb, coords=coordinates(income.tracts))
 crs(income.net) <- crs(income.tracts)
@@ -152,6 +154,7 @@ z <- (mI - eI) / sqrt(var)
 
 
 ##Local Moran's I (LISA)
+
 lisa.test <- localmoran(income.tracts$Income, income.lw, zero.policy = TRUE)
 lisa.test
 
@@ -171,12 +174,38 @@ map_LISA <- tm_shape(income.tracts) +
 map_LISA
 
 
-#############################
-## Spatial Interpolation (A4)
-#############################
+########################
+## Spatial Interpolation
+########################
 
-#Ordinary Kriging
+## Inverse Distance Weighting
 
+P.idw <- gstat::idw(PM25 ~ 1, pm25.mean.spdf, newdata=grd, idp=5)
+r       <- raster(P.idw)
+r.m     <- mask(r, income.tracts)
+
+
+tm_shape(r.m) + 
+  tm_raster(n=10,palette = "-RdBu",
+            title="Predicted PM25") + 
+  tm_shape(pm25.mean.spdf) + tm_dots(size=0.1) +
+  tm_legend(legend.outside=TRUE)
+
+
+## Leave-One-Out Validation
+
+IDW.out <- vector(length = length(pm25.mean.spdf))
+for (i in 1:length(pm25.mean.spdf)) {
+  IDW.out[i] <- idw(PM25 ~ 1, pm25.mean.spdf[-i,], pm25.mean.spdf[i,], idp=5.0)$var1.pred
+}
+
+OP <- par(pty="s", mar=c(4,3,0,0))
+plot(IDW.out ~ pm25.mean.spdf$PM25, asp=1, xlab="Observed", ylab="Predicted", pch=16,
+     col=rgb(0,0,0,0.5))
+abline(lm(IDW.out ~ pm25.mean.spdf$PM25), col="red", lw=2,lty=2)
+abline(0,1)
+par(OP)
+sqrt( sum((IDW.out - pm25.mean.spdf$PM25)^2) / length(pm25.mean.spdf))
 
 
 # Point Pattern Analysis (A2)
