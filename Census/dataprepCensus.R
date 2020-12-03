@@ -46,7 +46,8 @@ map_Income <- tm_shape(income.tracts) +
   tm_polygons(col = "Income",
               title = "Median Income",
               style = "jenks",
-              palette = "viridis", n = 6) +
+              palette = "viridis", n = 6,
+              border.alpha = 0.1) +
   tm_legend(legend.position = c("LEFT", "BOTTOM"))
 
 map_Income
@@ -168,7 +169,8 @@ map_LISA <- tm_shape(income.tracts) +
   tm_polygons(col = "Z.Ii", 
               title = "Local Moran's I for Income (Z Value)", 
               style = "jenks", 
-              palette = "viridis", n = 6) 
+              palette = "viridis", n = 6,
+              border.alpha = 0.1) 
 
 
 map_LISA
