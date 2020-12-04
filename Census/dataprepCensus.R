@@ -2,7 +2,6 @@
 ## Data Preparation
 ###################
 
-#Libraries
 library(spgwr)
 library(spatstat)
 library(tmap)
@@ -16,25 +15,20 @@ library(gtable)
 library(grid)
 library(gridExtra)
 
-#Set working directory
 dir <- "C:/Users/noahs/OneDrive/Desktop/School/GEOG 418/Final Project"
 setwd(dir)
 
-#Reading in particulate matter dataset
-#Read in PM2.5 data:
+#Read in particulate matter dataset
 pm2.5 <- readOGR("./Census", "Pm25Sample")
 pm2.5 <- spTransform(pm2.5, CRS("+init=epsg:26910"))
 
-#Reading in dissemination tract and income data
-#Read in census income data:
+#Read in census income data
 income <- read.csv("./Census/Income.csv")  
-#Select only ID and Income columns:
 colnames(income) <- c("DAUID", "Income")
 #Read in dissemination tract shapefile:
 census.tracts <- readOGR("./Census", "BC_DA")
 #Merge income and dissemination data:
 income.tracts <- merge(census.tracts,income, by = "DAUID")
-#Determine the number of columns in the dataframe:
 nrow(income.tracts)
 #Remove NA values:
 income.tracts <- income.tracts[!is.na(income.tracts$Income),]
@@ -210,5 +204,46 @@ par(OP)
 sqrt( sum((IDW.out - pm25.mean.spdf$PM25)^2) / length(pm25.mean.spdf))
 
 
-# Point Pattern Analysis (A2)
-### 
+#########################
+## Point Pattern Analysis
+#########################
+
+## Quadrat Analysis
+
+kma <- pm2.5
+kma$x <- coordinates(kma)[,1]
+kma$y <- coordinates(kma)[,2]
+
+zd <- zerodist(kma)
+kma <- remove.duplicates(kma)
+
+kma.ext <- as.matrix(extent(kma))
+window <- as.owin(list(xrange = kma.ext[1,], yrange = kma.ext[2,]))
+kma.ppp <- ppp(x = kma$x, y = kma$y, window = window)
+
+quads <- 10
+
+qcount <- quadratcount(kma.ppp, nx = quads, ny = quads)
+
+plot(kma.ppp, pch = "+", cex = 0.5)
+plot(qcount, add = T, col = "red")
+
+qcount.df <- as.data.frame(qcount)
+qcount.df <- plyr::count(qcount.df, 'Freq')
+
+colnames(qcount.df) <- c("x", "f")
+
+sum.f.x2 <- sum(qcount.df$f * (qcount.df$x)^2)
+
+M <- quads * quads
+N <- nrow(kma)
+
+sum.fx.2 <- sum((qcount.df$x * qcount.df$f))^2
+
+VAR <- (sum.f.x2 - (sum.fx.2 / M)) / (M - 1)
+MEAN <- N / M
+
+VMR <- VAR / MEAN
+
+chi.square = sqrt(VMR * (M-1))
+p = 1 - pchisq(chi.square, (M - 1))
