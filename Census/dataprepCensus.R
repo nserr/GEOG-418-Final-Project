@@ -47,13 +47,9 @@ map_Income <- tm_shape(income.tracts) +
 map_Income
 
 #Load and observe PM25 data
-mean.pm25 = aggregate(PM25 ~ DAUID, pm2.5, mean)
-mrg.tab.mean <- sp::merge(income.tracts, mean.pm25, by = "DAUID", all.x = FALSE)
-pm25.mean.spdf = na.omit(mrg.tab.mean)
-
 tm_shape(income.tracts) + 
   tm_polygons() +
-  tm_shape(pm25.mean.spdf) +
+  tm_shape(pm2.5) +
   tm_dots(col="PM25", palette = "-RdBu", 
           title="Sampled PM2.5", size=0.2) + 
   tm_legend(legend.outside=TRUE)
@@ -83,14 +79,14 @@ CovIncome <- (sdIncome / meanIncome) * 100
 normIncome_PVAL <- shapiro.test(income.tracts$Income)$p.value
 
 #PM2.5
-meanPM25 <- mean(pm25.mean.spdf$PM25)
-sdPM25 <- sd(pm25.mean.spdf$PM25)
-modePM25 <- as.numeric(names(sort(table(pm25.mean.spdf$PM25), decreasing = TRUE))[1])
-medianPM25 <- median(pm25.mean.spdf$PM25)
-skewPM25 <- skewness(pm25.mean.spdf$PM25)[1]
-kurtPM25 <- kurtosis(pm25.mean.spdf$PM25)[1]
+meanPM25 <- mean(pm2.5$PM25)
+sdPM25 <- sd(pm2.5$PM25)
+modePM25 <- as.numeric(names(sort(table(pm2.5$PM25), decreasing = TRUE))[1])
+medianPM25 <- median(pm2.5$PM25)
+skewPM25 <- skewness(pm2.5$PM25)[1]
+kurtPM25 <- kurtosis(pm2.5$PM25)[1]
 CovPM25 <- (sdPM25 / meanPM25) * 100
-normPM25_PVAL <- shapiro.test(pm25.mean.spdf$PM25)$p.value
+normPM25_PVAL <- shapiro.test(pm2.5$PM25)$p.value
 
 #Set table data
 samples = c("Income", "PM 2.5")
@@ -176,7 +172,7 @@ map_LISA
 
 ## Inverse Distance Weighting
 
-P.idw <- gstat::idw(PM25 ~ 1, pm25.mean.spdf, newdata=grd, idp=5)
+P.idw <- gstat::idw(PM25 ~ 1, pm2.5, newdata=grd, idp=5)
 r       <- raster(P.idw)
 r.m     <- mask(r, income.tracts)
 
@@ -184,24 +180,24 @@ r.m     <- mask(r, income.tracts)
 tm_shape(r.m) + 
   tm_raster(n=10,palette = "-RdBu",
             title="Predicted PM25") + 
-  tm_shape(pm25.mean.spdf) + tm_dots(size=0.1) +
+  tm_shape(pm2.5) + tm_dots(size=0.1) +
   tm_legend(legend.outside=TRUE)
 
 
 ## Leave-One-Out Validation
 
-IDW.out <- vector(length = length(pm25.mean.spdf))
-for (i in 1:length(pm25.mean.spdf)) {
-  IDW.out[i] <- idw(PM25 ~ 1, pm25.mean.spdf[-i,], pm25.mean.spdf[i,], idp=5.0)$var1.pred
+IDW.out <- vector(length = length(pm2.5))
+for (i in 1:length(pm2.5)) {
+  IDW.out[i] <- idw(PM25 ~ 1, pm2.5[-i,], pm2.5[i,], idp=5.0)$var1.pred
 }
 
 OP <- par(pty="s", mar=c(4,3,0,0))
-plot(IDW.out ~ pm25.mean.spdf$PM25, asp=1, xlab="Observed", ylab="Predicted", pch=16,
+plot(IDW.out ~ pm2.5$PM25, asp=1, xlab="Observed", ylab="Predicted", pch=16,
      col=rgb(0,0,0,0.5))
-abline(lm(IDW.out ~ pm25.mean.spdf$PM25), col="red", lw=2,lty=2)
+abline(lm(IDW.out ~ pm2.5$PM25), col="red", lw=2,lty=2)
 abline(0,1)
 par(OP)
-sqrt( sum((IDW.out - pm25.mean.spdf$PM25)^2) / length(pm25.mean.spdf))
+sqrt( sum((IDW.out - pm2.5$PM25)^2) / length(pm2.5))
 
 
 #########################
