@@ -7,7 +7,7 @@
 sufaceMap <- tm_shape(r) + 
   tm_raster(n=5,palette = "-RdBu",
             title="PM 2.5 \n(in ppm)") +
-  tm_shape(pm25.mean.spdf) + tm_dots(size=0.2) +
+  tm_shape(pm2.5) + tm_dots(size=0.2) +
   tm_legend(legend.outside=TRUE)
 sufaceMap
 
