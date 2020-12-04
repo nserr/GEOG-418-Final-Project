@@ -13,12 +13,12 @@ income.tracts.no0$X <- income.tracts.no0.coords[,1]
 income.tracts.no0$Y <- income.tracts.no0.coords[,2]
 
 ###Determine the bandwidth for GWR: this will take a while
-GWRbandwidth <- gwr.sel(income.tracts.no0$DEPENDENT~income.tracts.no0$INDEPENDENT, 
+GWRbandwidth <- gwr.sel(income.tracts.no0$Income~income.tracts.no0$Pm2.5, 
                         data=income.tracts.no0, coords=cbind(income.tracts.no0$X,income.tracts.no0$Y),adapt=T) 
 
 ###Perform GWR on the two variables with the bandwidth determined above
 ###This will take a looooooong while
-gwr.model = gwr(income.tracts.no0$DEPENDENT~income.tracts.no0$INDEPENDENT, 
+gwr.model = gwr(income.tracts.no0$Income~income.tracts.no0$Pm2.5, 
                 data=income.tracts.no0, coords=cbind(income.tracts.no0$X,income.tracts.no0$Y), 
                 adapt=GWRbandwidth, hatmatrix=TRUE, se.fit=TRUE) 
 
@@ -34,18 +34,20 @@ income.tracts.no0$localr <- results$localR2
 
 #Create choropleth map of r-square values
 map_r2 <- tm_shape(income.tracts.no0) +
-  tm_polygons(col = "COLUMN",
+  tm_polygons(col = "localr",
               title = "R2 values",
               style = "jenks",
-              palette = "viridis", n = 6)
+              palette = "viridis", n = 6,
+              border.alpha = 0.1)
 map_r2
 
 #Time for more magic. Let's map the coefficients
 income.tracts.no0$coeff <- results$income.tracts.no0.Pm2.5
 #Create choropleth map of the coefficients
 map_coef <- tm_shape(income.tracts.no0) +
-  tm_polygons(col = "COLUMN",
+  tm_polygons(col = "coeff",
               title = "Coefficients",
               style = "jenks",
-              palette = "viridis", n = 6)
+              palette = "viridis", n = 6,
+              midpoint = 0, border.alpha = 0.1)
 map_coef
