@@ -1,4 +1,7 @@
-####Geographically Weighted Regression
+#####################################
+## Geographically Weighted Regression
+#####################################
+
 #Let's say you are continuing with 
 #your data from the regression analysis. 
 #The first thing you need to do is to add the 
@@ -37,17 +40,25 @@ map_r2 <- tm_shape(income.tracts.no0) +
   tm_polygons(col = "localr",
               title = "R2 values",
               style = "jenks",
-              palette = "viridis", n = 6,
-              border.alpha = 0.1)
+              palette = "viridis", n = 5,
+              border.alpha = 0.1) +
+  tm_legend(legend.outside = TRUE)
+
+png("r2.png")
 map_r2
+dev.off()
 
 #Time for more magic. Let's map the coefficients
 income.tracts.no0$coeff <- results$income.tracts.no0.Pm2.5
 #Create choropleth map of the coefficients
-map_coef <- tm_shape(income.tracts.no0) +
+map_coeff <- tm_shape(income.tracts.no0) +
   tm_polygons(col = "coeff",
               title = "Coefficients",
               style = "jenks",
               palette = "viridis", n = 6,
-              midpoint = 0, border.alpha = 0.1)
-map_coef
+              midpoint = 0, border.alpha = 0.1) +
+  tm_legend(legend.outside = TRUE)
+
+png("coeff.png")
+map_coeff
+dev.off()
