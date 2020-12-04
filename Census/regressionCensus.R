@@ -1,4 +1,7 @@
-######Linear Regression##########
+####################
+## Linear Regression
+####################
+
 #Let's say your dataset with both PM2.5 and Income 
 #are stored in a dataset called income.tracts.
 #Plot income and PM2.5 from the income.tracts dataset you created
@@ -37,7 +40,9 @@ map_resid <- tm_shape(income.tracts.no0) +
               midpoint = 0, border.alpha = 0.1) +
   tm_legend(legend.outside=TRUE)
 
+png("residuals.png")
 map_resid
+dev.off()
 
 
 ## Global Moran's I
@@ -51,7 +56,7 @@ tm_shape(income.tracts.no0) + tm_borders(col='lightgrey') +
 income.no0.lw <- nb2listw(income.no0.nb, zero.policy = TRUE, style = "W")
 print.listw(income.no0.lw, zero.policy = TRUE)
 
-income.no0.mi <- moran.test(income.tracts.no0$Income, income.no0.lw, zero.policy = TRUE)
+income.no0.mi <- moran.test(income.tracts.no0$residuals, income.no0.lw, zero.policy = TRUE)
 income.no0.mi
 
 mI.res <- income.no0.mi$estimate[[1]]
