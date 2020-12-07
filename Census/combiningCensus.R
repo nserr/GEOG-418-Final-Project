@@ -3,7 +3,6 @@
 ###########################
 
 # Convert interpolated surface into a raster and map it
-#r <- raster(INTERPOLATED SURFACE)
 sufaceMap <- tm_shape(r) + 
   tm_raster(n=5,palette = "-RdBu",
             title="PM 2.5 \n(in ppm)") +

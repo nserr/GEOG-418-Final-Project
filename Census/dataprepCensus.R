@@ -25,17 +25,19 @@ pm2.5 <- spTransform(pm2.5, CRS("+init=epsg:26910"))
 #Read in census income data
 income <- read.csv("./Census/Income.csv")  
 colnames(income) <- c("DAUID", "Income")
-#Read in dissemination tract shapefile:
+
+#Read in dissemination tract shapefile
 census.tracts <- readOGR("./Census", "BC_DA")
-#Merge income and dissemination data:
+
+#Merge income and dissemination data
 income.tracts <- merge(census.tracts,income, by = "DAUID")
 nrow(income.tracts)
-#Remove NA values:
 income.tracts <- income.tracts[!is.na(income.tracts$Income),]
-#Reproject the data:
+
+#Reproject the data
 income.tracts <- spTransform(income.tracts, CRS("+init=epsg:26910"))
 
-#Create choropleth map of income:
+#Create choropleth map of income
 map_Income <- tm_shape(income.tracts) +
   tm_polygons(col = "Income",
               title = "Median Income",
@@ -44,7 +46,9 @@ map_Income <- tm_shape(income.tracts) +
               border.alpha = 0.1) +
   tm_legend(legend.position = c("LEFT", "BOTTOM"))
 
+png("mapIncome.png")
 map_Income
+dev.off()
 
 #Load and observe PM25 data
 tm_shape(income.tracts) + 
@@ -157,47 +161,23 @@ income.tracts$P<- lisa.test[,5]
 
 map_LISA <- tm_shape(income.tracts) + 
   tm_polygons(col = "Z.Ii", 
-              title = "Local Moran's I for Income (Z Value)", 
+              title = "Local Moran's I for Income\n(Z Value)", 
               style = "jenks", 
               palette = "viridis", n = 6,
-              border.alpha = 0.1) 
+              border.alpha = 0.1) +
+  tm_legend(legend.outside = TRUE)
 
-
+png("lisa.png")
 map_LISA
+dev.off()
 
 
-########################
-## Spatial Interpolation
-########################
+## Moran Plot
 
-## Inverse Distance Weighting
-
-P.idw <- gstat::idw(PM25 ~ 1, pm2.5, newdata=grd, idp=5)
-r       <- raster(P.idw)
-r.m     <- mask(r, income.tracts)
-
-
-tm_shape(r.m) + 
-  tm_raster(n=10,palette = "-RdBu",
-            title="Predicted PM25") + 
-  tm_shape(pm2.5) + tm_dots(size=0.1) +
-  tm_legend(legend.outside=TRUE)
-
-
-## Leave-One-Out Validation
-
-IDW.out <- vector(length = length(pm2.5))
-for (i in 1:length(pm2.5)) {
-  IDW.out[i] <- idw(PM25 ~ 1, pm2.5[-i,], pm2.5[i,], idp=5.0)$var1.pred
-}
-
-OP <- par(pty="s", mar=c(4,3,0,0))
-plot(IDW.out ~ pm2.5$PM25, asp=1, xlab="Observed", ylab="Predicted", pch=16,
-     col=rgb(0,0,0,0.5))
-abline(lm(IDW.out ~ pm2.5$PM25), col="red", lw=2,lty=2)
-abline(0,1)
-par(OP)
-sqrt( sum((IDW.out - pm2.5$PM25)^2) / length(pm2.5))
+png("moranPlot.png")
+moran.plot(income.tracts$Income, income.lw, zero.policy=TRUE, spChk=NULL, labels=NULL, xlab="Income", 
+           ylab="Spatially Lagged Income", quiet=NULL)
+dev.off()
 
 
 #########################
@@ -221,8 +201,10 @@ quads <- 10
 
 qcount <- quadratcount(kma.ppp, nx = quads, ny = quads)
 
+png("quadrat.png")
 plot(kma.ppp, pch = "+", cex = 0.5)
 plot(qcount, add = T, col = "red")
+dev.off()
 
 qcount.df <- as.data.frame(qcount)
 qcount.df <- plyr::count(qcount.df, 'Freq')
@@ -243,3 +225,44 @@ VMR <- VAR / MEAN
 
 chi.square = sqrt(VMR * (M-1))
 p = 1 - pchisq(chi.square, (M - 1))
+
+
+########################
+## Spatial Interpolation
+########################
+
+## Inverse Distance Weighting
+
+P.idw <- gstat::idw(PM25 ~ 1, pm2.5, newdata=grd, idp=8)
+r       <- raster(P.idw)
+r.m     <- mask(r, income.tracts)
+
+
+IDW.map <- tm_shape(r.m) + 
+  tm_raster(n=10,palette = "-RdBu",
+            title="Predicted PM25") + 
+  tm_shape(pm2.5) + tm_dots(size=0.1) +
+  tm_legend(legend.outside=TRUE)
+
+png("IDW.png")
+IDW.map
+dev.off()
+
+## Leave-One-Out Validation
+
+IDW.out <- vector(length = length(pm2.5))
+for (i in 1:length(pm2.5)) {
+  IDW.out[i] <- idw(PM25 ~ 1, pm2.5[-i,], pm2.5[i,], idp=8.0)$var1.pred
+}
+
+OP <- par(pty="s", mar=c(4,3,0,0))
+
+png("leaveOneOut.png")
+plot(IDW.out ~ pm2.5$PM25, asp=1, xlab="Observed", ylab="Predicted", pch=16,
+     col=rgb(0,0,0,0.5))
+abline(lm(IDW.out ~ pm2.5$PM25), col="red", lw=2,lty=2)
+abline(0,1)
+dev.off()
+
+par(OP)
+sqrt( sum((IDW.out - pm2.5$PM25)^2) / length(pm2.5))
